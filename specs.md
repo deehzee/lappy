@@ -67,12 +67,19 @@ repo/
 │       ├── schema.py
 │       └── ids.py
 ├── tests/
-├── data/
-│   └── [goal]/
-│       ├── raw/
-│       ├── runs/
-│       └── strides/
-└── specs.md
+└── data/
+    └── [goal]/
+        ├── raw/
+        │   ├── raw_splits_[YYYYMMDD].csv
+        │   └── raw_splits_[YYYYMMDD]_[N].csv
+        ├── runs/
+        │   ├── running_splits_[YYYYMMDD].csv
+        │   ├── running_splits_[YYYYMMDD]_[N].csv
+        │   └── all_splits.csv
+        └── strides/
+            ├── strides_[YYYYMMDD].csv
+            ├── strides_[YYYYMMDD]_[N].csv
+            └── all_strides.csv
 ```
 
 `[goal]` is a placeholder for the training target or grouping key. It may represent a person, a
@@ -139,7 +146,7 @@ Allowed `WorkoutType` values for `all_splits.csv` are:
 1. Download the splits CSV from Garmin Connect into `~/Downloads`.
    The file name is expected to be of the form `activity_xxxxxxxxxxx.csv`.
 
-   Example: `../activity_22390785030.csv`
+   Example: `examples/activity_22390785030.csv`
 
 2. If this is a non-strides run, create a new file called `running_splits_YYYYMMDD.csv`
    or `running_splits_YYYYMMDD_N.csv` containing the relevant laps from the activity CSV with the
@@ -172,7 +179,7 @@ Allowed `WorkoutType` values for `all_splits.csv` are:
    1. Append the running splits.
    2. Make sure there are no duplicates.
    3. Make sure the file is chronological using `RunDate`, `WorkoutID`, and `Laps`.
-   4. Do not modify already present laps.
+   4. Merge operation is idempotent: do not modify already present laps.
 
 5. If this is a strides workout, merge `strides_YYYYMMDD.csv` into `all_strides.csv`
    with the following processing:
@@ -221,6 +228,7 @@ Merge behavior must follow these rules:
   `running_splits_YYYYMMDD`, `running_splits_YYYYMMDD_N`, `strides_YYYYMMDD`, or
   `strides_YYYYMMDD_N`.
 - Multiple same-family workouts on the same date must use distinct `WorkoutID` values.
+- It can be implemented as [YYYYMMDD] or [YYYYMMDD]_[N].
 
 
 ## Implementation layout
