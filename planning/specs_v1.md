@@ -141,6 +141,11 @@ Allowed `WorkoutType` values for `all_splits.csv` are:
 
 ## Ingestion flow
 
+Some activity CSVs include a trailing **Summary** row (for example `Step Type` = `Summary`, or a
+lap column value of `Summary`); others do not. When absent, this is fine—ingest must not require a
+Summary row. When present, those rows are workout-level aggregates, not laps. Remove them during
+ingest. They must not appear in normalized per-workout files or in aggregate files.
+
 ## Single activity at a time
 
 1. Download the splits CSV from Garmin Connect into `~/Downloads`.
@@ -152,26 +157,28 @@ Allowed `WorkoutType` values for `all_splits.csv` are:
    or `running_splits_YYYYMMDD_N.csv` containing the relevant laps from the activity CSV with the
    following processing:
 
-   1. Remove the warm-up laps.
-   2. Remove the cool-down lap and anything after cool-down.
-   3. Rename the remaining laps sequentially (`1`, `2`, `3`, ...).
-   4. Add run date.
-   5. Add workout identifier.
-   6. Add workout type.
-   7. Add notes, if supplied.
+   1. Remove any summary rows and any other non-lap aggregate rows (no-op if none are present).
+   2. Remove the warm-up laps.
+   3. Remove the cool-down lap and anything after cool-down.
+   4. Rename the remaining laps sequentially (`1`, `2`, `3`, ...).
+   5. Add run date.
+   6. Add workout identifier.
+   7. Add workout type.
+   8. Add notes, if supplied.
 
 3. If this is a strides workout, create a new file called `strides_YYYYMMDD.csv`
    or `strides_YYYYMMDD_N.csv` containing the relevant laps from the activity CSV with the
    following processing:
 
-   1. Remove warm-up laps.
-   2. Remove the cool-down lap and anything after cool-down.
-   3. Remove recovery laps.
-   4. Keep only the strides laps.
-   5. Rename the remaining laps sequentially (`1`, `2`, `3`, ...).
-   6. Add run date.
-   7. Add workout identifier.
-   8. Add notes, if supplied.
+   1. Remove any summary rows and any other non-lap aggregate rows (no-op if none are present).
+   2. Remove warm-up laps.
+   3. Remove the cool-down lap and anything after cool-down.
+   4. Remove recovery laps.
+   5. Keep only the strides laps.
+   6. Rename the remaining laps sequentially (`1`, `2`, `3`, ...).
+   7. Add run date.
+   8. Add workout identifier.
+   9. Add notes, if supplied.
 
 4. If this is a non-strides run, merge `running_splits_YYYYMMDD.csv` into `all_splits.csv`
    with the following processing:
@@ -329,6 +336,8 @@ Optional arguments:
 
 Behavior:
 
+- remove any summary rows when present (non-lap aggregate rows; e.g. `Step Type` or lap column =
+  `Summary`)
 - remove warm-up laps
 - remove cool-down and anything after it
 - rename kept laps to `1..N`
@@ -362,6 +371,8 @@ Optional arguments:
 
 Behavior:
 
+- remove any summary rows when present (non-lap aggregate rows; e.g. `Step Type` or lap column =
+  `Summary`)
 - remove warm-up laps
 - remove cool-down and anything after it
 - remove recovery laps
@@ -663,6 +674,7 @@ The test suite must cover at least:
 - successful `ingest strides`
 - successful `ingest runs-batch`
 - successful `ingest strides-batch`
+- removal of summary rows
 - removal of warm-up laps
 - removal of cool-down and everything after it
 - removal of recovery laps for strides
