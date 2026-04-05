@@ -97,8 +97,9 @@ above.
 
 5. **Column set varies between Garmin workout files**  
    In our samples, strides-outside-coach **omits** `Avg Vertical Ratio` present in the coach plan
-   file. Normalized schemas in `specs_v1.md` still list `avg_vertical_ratio_pct` for
-   `all_splits.csv`; missing raw fields should become empty values or a documented placeholder,
+   file. `specs_v1.md` lists `avg_vertical_ratio_pct` and `avg_gap_min_per_mi` on both
+   `all_splits.csv` and `all_strides.csv`—same per-lap metric order as runs, except strides omit
+   `workout_type` only. Missing raw fields should become empty values or a documented placeholder,
    consistent with validation rules you implement in Phase 7.
 
 ## Mapping raw columns → normalized splits

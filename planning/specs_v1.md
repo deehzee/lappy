@@ -129,15 +129,17 @@ Allowed `workout_type` values for `all_splits.csv` are:
 3. `laps`
 4. `distance_mi`
 5. `avg_pace_min_per_mi`
-6. `avg_hr_bpm`
-7. `max_hr_bpm`
-8. `avg_run_cadence_spm`
-9. `avg_ground_contact_time_ms`
-10. `avg_gct_balance_pct`
-11. `avg_stride_length_m`
-12. `avg_vertical_oscillation_cm`
-13. `avg_power_w`
-14. `notes`
+6. `avg_gap_min_per_mi`
+7. `avg_hr_bpm`
+8. `max_hr_bpm`
+9. `avg_run_cadence_spm`
+10. `avg_ground_contact_time_ms`
+11. `avg_gct_balance_pct`
+12. `avg_stride_length_m`
+13. `avg_vertical_oscillation_cm`
+14. `avg_vertical_ratio_pct`
+15. `avg_power_w`
+16. `notes`
 
 ## Ingestion flow
 
