@@ -14,7 +14,7 @@ A Python library under `src/lappy/` with a thin CLI (`lappy.py`) that:
 3. Validates outputs.
 4. Plotting and analysis are **out of scope** for v1 (see spec).
 
-Canonical column orders, CLI command tree, merge identity `(WorkoutID, Laps)`, and test checklist
+Canonical column orders, CLI command tree, merge identity `(workout_id, laps)`, and test checklist
 are all defined in `specs_v1.md`—do not duplicate them here; implement against that document.
 
 ## Phase roadmap (do in order)
@@ -24,7 +24,7 @@ Follow [`phases_v1.md`](phases_v1.md) sequentially. Summary:
 | Phase | Focus |
 | ----- | ----- |
 | 0 | Layout, packaging, runnable CLI, full command tree + help (handlers may stub). |
-| 1 | `schema.py`, `ids.py`, `io.py`: columns, WorkoutID, paths, dates, batch discovery. |
+| 1 | `schema.py`, `ids.py`, `io.py`: columns, `workout_id`, paths, dates, batch discovery. |
 | 2 | `ingest.py`, `ingest run`, `ingest strides` (lap rules, normalization). |
 | 3 | Batch ingest (`runs-batch`, `strides-batch`). |
 | 4 | `merge.py`, single-file merge. |
@@ -97,22 +97,23 @@ above.
 
 5. **Column set varies between Garmin workout files**  
    In our samples, strides-outside-coach **omits** `Avg Vertical Ratio` present in the coach plan
-   file. Normalized schemas in `specs_v1.md` still list `Avg Vertical Ratio%` for `all_splits.csv`;
-   missing raw fields should become empty values or a documented placeholder, consistent with
-   validation rules you implement in Phase 7.
+   file. Normalized schemas in `specs_v1.md` still list `avg_vertical_ratio_pct` for
+   `all_splits.csv`; missing raw fields should become empty values or a documented placeholder,
+   consistent with validation rules you implement in Phase 7.
 
 ## Mapping raw columns → normalized splits
 
 ### Output column names
 
 Normalized files use the **exact** header names and column order from `specs_v1.md` (e.g.
-`Distancemi`, `Avg Pacemin/mi`, `Avg GAPmin/mi`, …). Raw Garmin headers differ: they split units
-across lines (`Distance` + `mi`), use `"--"` for missing values, or use `Distance` without the
-concatenated spec-style name.
+`distance_mi`, `avg_pace_min_per_mi`, `avg_gap_min_per_mi`, …). Raw Garmin headers differ: they
+split units across lines (`Distance` + `mi`), use `"--"` for missing values, or use `Distance`
+without the same spelling as the canonical header.
 
 Implement a **single mapping layer** in ingest (or `io.py`): normalize header names to logical
-keys, then project into the canonical schema. Unit strings in the spec column names are **naming
-conventions for the CSV header**, not a requirement that the raw file use the same spelling.
+keys, then project into the canonical schema. Suffixes such as `_mi`, `_bpm`, and `_pct` in the spec
+column names are **naming conventions for the CSV header**, not a requirement that the raw file use
+the same spelling.
 
 ### Is inference easy or hard?
 

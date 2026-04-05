@@ -1,7 +1,7 @@
 # Implementation phases
 
-This document breaks the [specification](specs.md) into implementation phases. It does not replace
-the spec; when they disagree, follow `specs.md`.
+This document breaks the [specification](specs_v1.md) into implementation phases. It does not
+replace the spec; when they disagree, follow `specs_v1.md`.
 
 ## Phase 0 — Project skeleton
 
@@ -19,7 +19,7 @@ the spec; when they disagree, follow `specs.md`.
 
 - `schema.py`: canonical column order and field definitions for normalized runs, strides, and
   aggregates.
-- `ids.py`: `WorkoutID` generation and disambiguation (including same-day, same-family workouts).
+- `ids.py`: `workout_id` generation and disambiguation (including same-day, same-family workouts).
 - `io.py`: CSV read/write with exact column order, path and filename parsing, date handling
   (`YYYYMMDD` and `YYYY-MM-DD`), and helpers for batch discovery (globs, directories).
 
@@ -32,7 +32,7 @@ ingest or merge logic.
 
 - `ingest.py`: Garmin activity CSV to `running_splits_YYYYMMDD.csv` and `strides_YYYYMMDD.csv`.
 - Lap handling: remove warm-up and cool-down (and after), strides recovery removal, strides-only
-  laps, sequential lap renumbering, `RunDate`, `WorkoutID`, `WorkoutType` (runs), `Notes`;
+  laps, sequential lap renumbering, `run_date`, `workout_id`, `workout_type` (runs), `notes`;
   `interval` normalized to `intervals` on output.
 - CLI: `ingest run`, `ingest strides` with the flags and behavior described in the spec.
 

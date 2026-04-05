@@ -47,7 +47,7 @@ For stride workouts, the historical and chronological splits are recorded in
 - `interval` should be treated as invalid in output files.
 - If the CLI accepts aliases, it may accept `interval` on input, but it must normalize it to
   `intervals` before writing output.
-- `strides` is not a valid `WorkoutType` value for `all_splits.csv`; strides belong in
+- `strides` is not a valid `workout_type` value for `all_splits.csv`; strides belong in
   `all_strides.csv`.
 
 ## Repository layout
@@ -93,25 +93,25 @@ race, a season, or another training goal.
 
 `all_splits.csv` must contain these columns in this exact order:
 
-1. `RunDate`
-2. `WorkoutID`
-3. `WorkoutType`
-4. `Laps`
-5. `Distancemi`
-6. `Avg Pacemin/mi`
-7. `Avg GAPmin/mi`
-8. `Avg HRbpm`
-9. `Max HRbpm`
-10. `Avg Run Cadencespm`
-11. `Avg Ground Contact Timems`
-12. `Avg GCT Balance%`
-13. `Avg Stride Lengthm`
-14. `Avg Vertical Oscillationcm`
-15. `Avg Vertical Ratio%`
-16. `Avg PowerW`
-17. `Notes`
+1. `run_date`
+2. `workout_id`
+3. `workout_type`
+4. `laps`
+5. `distance_mi`
+6. `avg_pace_min_per_mi`
+7. `avg_gap_min_per_mi`
+8. `avg_hr_bpm`
+9. `max_hr_bpm`
+10. `avg_run_cadence_spm`
+11. `avg_ground_contact_time_ms`
+12. `avg_gct_balance_pct`
+13. `avg_stride_length_m`
+14. `avg_vertical_oscillation_cm`
+15. `avg_vertical_ratio_pct`
+16. `avg_power_w`
+17. `notes`
 
-Allowed `WorkoutType` values for `all_splits.csv` are:
+Allowed `workout_type` values for `all_splits.csv` are:
 
 - `easy`
 - `tired`
@@ -124,20 +124,20 @@ Allowed `WorkoutType` values for `all_splits.csv` are:
 
 `all_strides.csv` must contain these columns in this exact order:
 
-1. `RunDate`
-2. `WorkoutID`
-3. `Laps`
-4. `Distancemi`
-5. `Avg Pacemin/mi`
-6. `Avg HRbpm`
-7. `Max HRbpm`
-8. `Avg Run Cadencespm`
-9. `Avg Ground Contact Timems`
-10. `Avg GCT Balance%`
-11. `Avg Stride Lengthm`
-12. `Avg Vertical Oscillationcm`
-13. `Avg PowerW`
-14. `Notes`
+1. `run_date`
+2. `workout_id`
+3. `laps`
+4. `distance_mi`
+5. `avg_pace_min_per_mi`
+6. `avg_hr_bpm`
+7. `max_hr_bpm`
+8. `avg_run_cadence_spm`
+9. `avg_ground_contact_time_ms`
+10. `avg_gct_balance_pct`
+11. `avg_stride_length_m`
+12. `avg_vertical_oscillation_cm`
+13. `avg_power_w`
+14. `notes`
 
 ## Ingestion flow
 
@@ -185,7 +185,7 @@ ingest. They must not appear in normalized per-workout files or in aggregate fil
 
    1. Append the running splits.
    2. Make sure there are no duplicates.
-   3. Make sure the file is chronological using `RunDate`, `WorkoutID`, and `Laps`.
+   3. Make sure the file is chronological using `run_date`, `workout_id`, and `laps`.
    4. Merge operation is idempotent: do not modify already present laps.
 
 5. If this is a strides workout, merge `strides_YYYYMMDD.csv` into `all_strides.csv`
@@ -193,7 +193,7 @@ ingest. They must not appear in normalized per-workout files or in aggregate fil
 
    1. Append the strides splits.
    2. Make sure there are no duplicates.
-   3. Make sure the file is chronological using `RunDate`, `WorkoutID`, and `Laps`.
+   3. Make sure the file is chronological using `run_date`, `workout_id`, and `laps`.
    4. Do not modify already present laps.
 
 ## Batch mode
@@ -214,8 +214,8 @@ Batch modes should exist wherever they naturally fit the workflow.
 To satisfy idempotent merge and the requirement that already present laps should not change,
 merge identity is defined as follows:
 
-- for `all_splits.csv`: `(WorkoutID, Laps)`
-- for `all_strides.csv`: `(WorkoutID, Laps)`
+- for `all_splits.csv`: `(workout_id, laps)`
+- for `all_strides.csv`: `(workout_id, laps)`
 
 Merge behavior must follow these rules:
 
@@ -227,14 +227,14 @@ Merge behavior must follow these rules:
 
 ## Workout identifier rules
 
-`WorkoutID` is the stable workout key used for merge identity.
+`workout_id` is the stable workout key used for merge identity.
 
 - It must be present in every normalized per-workout file and in every aggregate file.
 - It must be unique within a workout family for a given goal folder.
 - It should be derived from the normalized output filename stem, for example
   `running_splits_YYYYMMDD`, `running_splits_YYYYMMDD_N`, `strides_YYYYMMDD`, or
   `strides_YYYYMMDD_N`.
-- Multiple same-family workouts on the same date must use distinct `WorkoutID` values.
+- Multiple same-family workouts on the same date must use distinct `workout_id` values.
 - It can be implemented as [YYYYMMDD] or [YYYYMMDD]_[N].
 
 
@@ -266,7 +266,7 @@ Module responsibilities should be organized as follows:
 - `merge.py`: idempotent merging of normalized per-workout CSVs into aggregate CSVs
 - `validate.py`: schema validation and semantic validation
 - `schema.py`: canonical column orders and field definitions
-- `ids.py`: `WorkoutID` generation and related helpers
+- `ids.py`: `workout_id` generation and related helpers
 
 The CLI entrypoint remains `lappy.py`, but command handlers should call importable library code
 in `src/lappy/` rather than embedding business logic directly in the CLI layer.
@@ -341,10 +341,10 @@ Behavior:
 - remove warm-up laps
 - remove cool-down and anything after it
 - rename kept laps to `1..N`
-- add `RunDate`
-- add `WorkoutID`
-- add `WorkoutType`
-- add `Notes`
+- add `run_date`
+- add `workout_id`
+- add `workout_type`
+- add `notes`
 - write normalized output in the canonical `all_splits.csv` column order
 
 Default output name:
@@ -378,9 +378,9 @@ Behavior:
 - remove recovery laps
 - keep only strides laps
 - rename kept laps to `1..N`
-- add `RunDate`
-- add `WorkoutID`
-- add `Notes`
+- add `run_date`
+- add `workout_id`
+- add `notes`
 - write normalized output in the canonical `all_strides.csv` column order
 
 Default output name:
@@ -464,7 +464,7 @@ Behavior:
 - validate rows and schema
 - append non-duplicate rows
 - fail on merge conflict
-- sort by `RunDate`, then `WorkoutID`, then `Laps`
+- sort by `run_date`, then `workout_id`, then `laps`
 - write the result
 
 Default output name:
@@ -493,7 +493,7 @@ Behavior:
 - validate rows and schema
 - append non-duplicate rows
 - fail on merge conflict
-- sort by `RunDate`, then `WorkoutID`, then `Laps`
+- sort by `run_date`, then `workout_id`, then `laps`
 - write the result
 
 Default output name:
@@ -523,7 +523,7 @@ Behavior:
 - preserve existing laps unchanged
 - skip duplicates
 - fail on conflict
-- sort by `RunDate`, then `WorkoutID`, then `Laps`
+- sort by `run_date`, then `workout_id`, then `laps`
 - write the result
 
 #### `lappy.py merge strides-batch`
@@ -549,7 +549,7 @@ Behavior:
 - preserve existing laps unchanged
 - skip duplicates
 - fail on conflict
-- sort by `RunDate`, then `WorkoutID`, then `Laps`
+- sort by `run_date`, then `workout_id`, then `laps`
 - write the result
 
 ### `import`
@@ -620,7 +620,7 @@ Equivalent to:
 #### `lappy.py validate running-splits`
 
 Validates that a normalized non-strides file has the exact `all_splits.csv` schema and valid
-`WorkoutType` values.
+`workout_type` values.
 
 #### `lappy.py validate strides-splits`
 
@@ -631,8 +631,8 @@ Validates that a normalized strides file has the exact `all_strides.csv` schema.
 Validates that `all_splits.csv`:
 
 - has the exact canonical schema
-- uses only allowed `WorkoutType` values
-- is ordered chronologically by `RunDate`, then `WorkoutID`, then `Laps`
+- uses only allowed `workout_type` values
+- is ordered chronologically by `run_date`, then `workout_id`, then `laps`
 - contains no duplicate identities
 - contains no merge conflicts
 
@@ -641,7 +641,7 @@ Validates that `all_splits.csv`:
 Validates that `all_strides.csv`:
 
 - has the exact canonical schema
-- is ordered chronologically by `RunDate`, then `WorkoutID`, then `Laps`
+- is ordered chronologically by `run_date`, then `workout_id`, then `laps`
 - contains no duplicate identities
 - contains no merge conflicts
 
@@ -681,7 +681,7 @@ The test suite must cover at least:
 - lap renumbering
 - date insertion
 - notes insertion
-- `WorkoutType` normalization to `intervals`
+- `workout_type` normalization to `intervals`
 - successful single-file merge for runs
 - successful single-file merge for strides
 - successful batch merge for runs
