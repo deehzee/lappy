@@ -22,8 +22,8 @@ data/
     │   ├── raw_splits_[YYYYMMDD].csv
     │   └── raw_splits_[YYYYMMDD]_[N].csv
     ├── runs/
-    │   ├── running_splits_[YYYYMMDD].csv
-    │   ├── running_splits_[YYYYMMDD]_[N].csv
+    │   ├── main_splits_[YYYYMMDD].csv
+    │   ├── main_splits_[YYYYMMDD]_[N].csv
     │   └── all_splits.csv
     └── strides/
         ├── strides_[YYYYMMDD].csv

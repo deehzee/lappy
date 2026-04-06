@@ -1,40 +1,48 @@
 # Implementation instructions (v1)
 
 This document guides implementers. The **authoritative functional specification** is
-[`specs_v1.md`](specs_v1.md). Work proceeds in **phases** defined in
-[`phases_v1.md`](phases_v1.md). If anything here disagrees with the spec, follow `specs_v1.md`.
+[`specs_v1.md`](specs_v1.md). If anything here disagrees with the spec, follow `specs_v1.md`.
 
 ## What you are building
 
-A Python library under `src/lappy/` with a thin CLI (`lappy.py`) that:
+Implement the v1 behaviors, CLI surface, and tests described in `specs_v1.md`.
 
-1. Ingests Garmin Connect **split / lap CSV** exports into normalized per-workout CSVs.
-2. Merges those into aggregate `all_splits.csv` and `all_strides.csv` with idempotent merge
-   semantics.
-3. Validates outputs.
-4. Plotting and analysis are **out of scope** for v1 (see spec).
+## Recommended package layout
 
-Canonical column orders, CLI command tree, merge identity `(workout_id, laps)`, and test checklist
-are all defined in `specs_v1.md`—do not duplicate them here; implement against that document.
+Use a `src/` layout with the library under `src/lappy/` and tests at the repository root:
 
-## Phase roadmap (do in order)
+```text
+repo/
+├── src/
+│   └── lappy/
+│       ├── __init__.py
+│       ├── cli.py
+│       ├── ids.py
+│       ├── io.py
+│       ├── ingest.py
+│       ├── merge.py
+│       ├── validate.py
+│       └── schema.py
+├── tests/
+└── data/
+    └── [goal]/
+        └── …
+```
 
-Follow [`phases_v1.md`](phases_v1.md) sequentially. Summary:
+`tests/` must not live inside `src/lappy/`. The `data/[goal]/…` tree is specified under **Data
+directory layout** in `specs_v1.md`; mirror that shape when wiring paths in `io.py`.
 
-| Phase | Focus |
-| ----- | ----- |
-| 0 | Layout, packaging, runnable CLI, full command tree + help (handlers may stub). |
-| 1 | `schema.py`, `ids.py`, `io.py`: columns, `workout_id`, paths, dates, batch discovery. |
-| 2 | `ingest.py`, `ingest run`, `ingest strides` (lap rules, normalization). |
-| 3 | Batch ingest (`runs-batch`, `strides-batch`). |
-| 4 | `merge.py`, single-file merge. |
-| 5 | Batch merge. |
-| 6 | `import` = ingest then merge. |
-| 7 | `validate` subcommands. |
-| 8 | Coverage and hardening (100% line coverage, real-export edge cases). |
+Module responsibilities:
 
-Dependency order is in `phases_v1.md`; do not skip prerequisites (e.g. merge needs schema and
-ingest behavior).
+- `cli.py`: argument parsing and command dispatch
+- `ids.py`: `workout_id` generation and related helpers
+- `io.py`: CSV reading and writing, file discovery, filename parsing, and date inference
+- `ingest.py`: trimming and normalization of Garmin activity CSVs into per-workout CSVs
+- `merge.py`: idempotent merging of normalized per-workout CSVs into aggregate CSVs
+- `validate.py`: schema validation and semantic validation
+- `schema.py`: canonical column orders and field definitions
+
+The CLI entrypoint is `lappy.py`; keep handlers thin and delegate to these modules.
 
 ## Example Garmin exports (`examples/`)
 
@@ -81,9 +89,8 @@ above.
    Single-line header. Columns include `Interval`, `Step Type`, `Lap`. Rows include **Warm Up**,
    **Run**, **Recovery**, **Cool Down**, and often a **Summary** row (and sometimes odd trailing
    laps). The spec’s ingest rules (drop warm-up, cool-down and after, drop recovery for strides,
-   renumber laps) apply only when **row roles are stated in the file**—e.g. via `Step Type` (or an
-   equivalent explicit label on the lap row). **Do not infer** warm-up or cool-down from pace,
-   distance, duration, or lap order alone.
+   renumber laps) apply when **row roles are stated in the file** (e.g. via `Step Type`). When they
+   are not, see **Exports without explicit lap roles** in `specs_v1.md`.
 
 3. **Summary and non-lap rows**  
    `activity_running_generic.csv` ends with a row whose first column is `Summary`, not a lap index.
@@ -92,15 +99,16 @@ above.
 
 4. **Grouped or compound lap labels**  
    In `activity_garmin_running_coach_plan_activity.csv`, `Lap` can be a range (e.g. `2 - 4`) for a
-   single rolled-up interval. Decide how that maps to the spec’s per-lap normalized rows (split,
-   expand, or reject) and document or test the chosen behavior.
+   single rolled-up interval. Treat those as **aggregate rows**, not per-lap data: **drop** them
+   during ingest so the checked **examples/** files **succeed**. Only rows with a single-integer lap
+   index are retained, then renumbered—see **Rolled-up or compound lap rows** in `specs_v1.md`.
 
 5. **Column set varies between Garmin workout files**  
    In our samples, strides-outside-coach **omits** `Avg Vertical Ratio` present in the coach plan
    file. `specs_v1.md` lists `avg_vertical_ratio_pct` and `avg_gap_min_per_mi` on both
    `all_splits.csv` and `all_strides.csv`—same per-lap metric order as runs, except strides omit
-   `workout_type` only. Missing raw fields should become empty values or a documented placeholder,
-   consistent with validation rules you implement in Phase 7.
+   `workout_type` only. **Partial or missing raw columns** in the spec: use empty values or one
+   documented placeholder consistently (including validation in Phase 7).
 
 ## Mapping raw columns → normalized splits
 
@@ -126,22 +134,18 @@ the same spelling.
 
 - **Which laps to keep (warm-up, cool-down, recovery)**  
   - **Garmin workout exports with explicit step labels (`Step Type`, etc.):** filter rows using
-    those labels, drop `Summary`, then apply the spec’s rules. Edge cases (compound laps, stray
-    laps) need explicit tests.
-  - **Manual lap exports with no warm-up/cool-down on any row:** **do not infer** warm-up or
-    cool-down. Lap length, order, or a trailing `Summary` row are **not** sufficient to classify
-    laps. Any trim that matches `specs_v1.md` must come from **explicit user input** (e.g. flags
-    naming which laps to drop) or a **spec/product decision** documented in code and tests—not
-    from heuristics.
+    those labels, drop `Summary` and rolled-up lap rows, then apply the spec’s rules. Stray laps
+    need explicit tests.
+  - **Manual lap exports without step labels:** the spec defines behavior under **Exports without
+    explicit lap roles**—no heuristic inference from pace, distance, duration, or order.
 
 Overall: column mapping is **straightforward** for these Garmin workout examples. Without explicit
-labels, **do not “detect” lap trims from the CSV**; treat trimming as a product and CLI design
-problem, not an inference problem.
+labels, follow the spec’s no-inference rule; do not “detect” lap trims from the CSV alone.
 
 ## Implementation discipline
 
-- **Library-first:** business logic lives in `src/lappy/` modules per `specs_v1.md`; CLI dispatches
-  only.
+- **Library-first:** required by **Architecture (library-first)** in `specs_v1.md`; use the package
+  layout and modules above—CLI dispatches only.
 - **Tests:** 100% line coverage and the checklist in `specs_v1.md` (help, ingest, merge, validate,
   `--dry-run`, `--force`, conflicts, etc.).
 - **Python style:** follow repository rules (PEP 8, 90-char lines, import blocks, two blank lines
@@ -156,5 +160,4 @@ problem, not an inference problem.
 4. Implement ingest against **Garmin workout** examples first (explicit `Step Type`). Define how
    **manual** exports interact with `specs_v1.md` trim rules without inferring warm-up or cool-down.
 
-When in doubt, **`specs_v1.md` wins**; use `phases_v1.md` for sequencing and exit criteria per
-phase.
+When in doubt, **`specs_v1.md` wins**.

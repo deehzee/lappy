@@ -50,42 +50,33 @@ For stride workouts, the historical and chronological splits are recorded in
 - `strides` is not a valid `workout_type` value for `all_splits.csv`; strides belong in
   `all_strides.csv`.
 
-## Repository layout
+## Architecture (library-first)
 
-The repository should use a library-first layout for v1:
+V1 is **library-first**: behavior is implemented in an importable Python package, and the CLI is a
+thin layer that parses arguments and calls into that package. Business logic must not live only in
+the CLI entrypoint.
+
+## Data directory layout
+
+Training artifacts under a goal folder use this shape (paths are illustrative of intended layout;
+`[goal]` is a placeholder for the training target or grouping key—a person, race, season, or
+similar):
 
 ```text
-repo/
-├── src/
-│   └── lappy/
-│       ├── __init__.py
-│       ├── cli.py
-│       ├── io.py
-│       ├── ingest.py
-│       ├── merge.py
-│       ├── validate.py
-│       ├── schema.py
-│       └── ids.py
-├── tests/
-└── data/
-    └── [goal]/
-        ├── raw/
-        │   ├── raw_splits_[YYYYMMDD].csv
-        │   └── raw_splits_[YYYYMMDD]_[N].csv
-        ├── runs/
-        │   ├── running_splits_[YYYYMMDD].csv
-        │   ├── running_splits_[YYYYMMDD]_[N].csv
-        │   └── all_splits.csv
-        └── strides/
-            ├── strides_[YYYYMMDD].csv
-            ├── strides_[YYYYMMDD]_[N].csv
-            └── all_strides.csv
+data/
+└── [goal]/
+    ├── raw/
+    │   ├── raw_splits_[YYYYMMDD].csv
+    │   └── raw_splits_[YYYYMMDD]_[N].csv
+    ├── runs/
+    │   ├── main_splits_[YYYYMMDD].csv
+    │   ├── main_splits_[YYYYMMDD]_[N].csv
+    │   └── all_splits.csv
+    └── strides/
+        ├── strides_[YYYYMMDD].csv
+        ├── strides_[YYYYMMDD]_[N].csv
+        └── all_strides.csv
 ```
-
-`[goal]` is a placeholder for the training target or grouping key. It may represent a person, a
-race, a season, or another training goal.
-
-`tests/` must remain at the repository root, not inside `src/lappy/`.
 
 ## CSV format
 
@@ -155,11 +146,12 @@ ingest. They must not appear in normalized per-workout files or in aggregate fil
 
    Example: `examples/activity_22390785030.csv`
 
-2. If this is a non-strides run, create a new file called `running_splits_YYYYMMDD.csv`
-   or `running_splits_YYYYMMDD_N.csv` containing the relevant laps from the activity CSV with the
+2. If this is a non-strides run, create a new file called `main_splits_YYYYMMDD.csv`
+   or `main_splits_YYYYMMDD_N.csv` containing the relevant laps from the activity CSV with the
    following processing:
 
-   1. Remove any summary rows and any other non-lap aggregate rows (no-op if none are present).
+   1. Remove any summary rows, rolled-up lap rows (lap field not a single integer), and any other
+      non-lap aggregate rows (no-op if none are present).
    2. Remove the warm-up laps.
    3. Remove the cool-down lap and anything after cool-down.
    4. Rename the remaining laps sequentially (`1`, `2`, `3`, ...).
@@ -172,7 +164,8 @@ ingest. They must not appear in normalized per-workout files or in aggregate fil
    or `strides_YYYYMMDD_N.csv` containing the relevant laps from the activity CSV with the
    following processing:
 
-   1. Remove any summary rows and any other non-lap aggregate rows (no-op if none are present).
+   1. Remove any summary rows, rolled-up lap rows (lap field not a single integer), and any other
+      non-lap aggregate rows (no-op if none are present).
    2. Remove warm-up laps.
    3. Remove the cool-down lap and anything after cool-down.
    4. Remove recovery laps.
@@ -182,7 +175,7 @@ ingest. They must not appear in normalized per-workout files or in aggregate fil
    8. Add workout identifier.
    9. Add notes, if supplied.
 
-4. If this is a non-strides run, merge `running_splits_YYYYMMDD.csv` into `all_splits.csv`
+4. If this is a non-strides run, merge `main_splits_YYYYMMDD.csv` into `all_splits.csv`
    with the following processing:
 
    1. Append the running splits.
@@ -204,9 +197,9 @@ Batch modes should exist wherever they naturally fit the workflow.
 
 1. Batch ingest from activity files. These files are expected to have a date in their file name
    at the end before the extension. That date should be used to create the corresponding
-   `running_splits_YYYYMMDD.csv` or `strides_YYYYMMDD.csv` file.
+   `main_splits_YYYYMMDD.csv` or `strides_YYYYMMDD.csv` file.
 
-2. Batch merge all `running_splits_YYYYMMDD.csv` or `strides_YYYYMMDD.csv` files into
+2. Batch merge all `main_splits_YYYYMMDD.csv` or `strides_YYYYMMDD.csv` files into
    `all_splits.csv` or `all_strides.csv` respectively.
 
 3. Batch merge must be idempotent. Already present laps must not change.
@@ -234,50 +227,18 @@ Merge behavior must follow these rules:
 - It must be present in every normalized per-workout file and in every aggregate file.
 - It must be unique within a workout family for a given goal folder.
 - It should be derived from the normalized output filename stem, for example
-  `running_splits_YYYYMMDD`, `running_splits_YYYYMMDD_N`, `strides_YYYYMMDD`, or
+  `main_splits_YYYYMMDD`, `main_splits_YYYYMMDD_N`, `strides_YYYYMMDD`, or
   `strides_YYYYMMDD_N`.
 - Multiple same-family workouts on the same date must use distinct `workout_id` values.
 - It can be implemented as [YYYYMMDD] or [YYYYMMDD]_[N].
 
-
-## Implementation layout
-
-V1 should be implemented as a Python library with a thin CLI on top.
-
-Recommended package layout:
-
-```text
-src/lappy/
-├── __init__.py
-├── cli.py
-├── io.py
-├── ingest.py
-├── merge.py
-├── validate.py
-├── schema.py
-└── ids.py
-
-tests/
-```
-
-Module responsibilities should be organized as follows:
-
-- `cli.py`: argument parsing and command dispatch
-- `io.py`: CSV reading and writing, file discovery, filename parsing, and date inference
-- `ingest.py`: trimming and normalization of Garmin activity CSVs into per-workout CSVs
-- `merge.py`: idempotent merging of normalized per-workout CSVs into aggregate CSVs
-- `validate.py`: schema validation and semantic validation
-- `schema.py`: canonical column orders and field definitions
-- `ids.py`: `workout_id` generation and related helpers
-
-The CLI entrypoint remains `lappy.py`, but command handlers should call importable library code
-in `src/lappy/` rather than embedding business logic directly in the CLI layer.
-
-# Python package and CLI design
+## Python package and CLI design
 
 There must be one top-level CLI called `lappy.py`.
 
-The problem should be decomposed into subcommands.
+The problem should be decomposed into subcommands. Handlers must call into the importable library
+(see **Architecture (library-first)**); they must not embed business logic that belongs in the
+package.
 
 The CLI must include help.
 
@@ -319,7 +280,7 @@ lappy.py
 
 #### `lappy.py ingest run`
 
-Creates `running_splits_YYYYMMDD.csv` from one non-strides Garmin activity CSV.
+Creates `main_splits_YYYYMMDD.csv` from one non-strides Garmin activity CSV.
 
 Required arguments:
 
@@ -340,6 +301,8 @@ Behavior:
 
 - remove any summary rows when present (non-lap aggregate rows; e.g. `Step Type` or lap column =
   `Summary`)
+- remove rolled-up lap rows when present (lap index not a single integer; e.g. `2 - 4` in one
+  cell)
 - remove warm-up laps
 - remove cool-down and anything after it
 - rename kept laps to `1..N`
@@ -351,7 +314,7 @@ Behavior:
 
 Default output name:
 
-- `running_splits_YYYYMMDD.csv`
+- `main_splits_YYYYMMDD.csv`
 
 #### `lappy.py ingest strides`
 
@@ -375,6 +338,8 @@ Behavior:
 
 - remove any summary rows when present (non-lap aggregate rows; e.g. `Step Type` or lap column =
   `Summary`)
+- remove rolled-up lap rows when present (lap index not a single integer; e.g. `2 - 4` in one
+  cell)
 - remove warm-up laps
 - remove cool-down and anything after it
 - remove recovery laps
@@ -391,7 +356,7 @@ Default output name:
 
 #### `lappy.py ingest runs-batch`
 
-Batch-ingests multiple activity CSV files into multiple `running_splits_YYYYMMDD.csv` files.
+Batch-ingests multiple activity CSV files into multiple `main_splits_YYYYMMDD.csv` files.
 
 Required arguments:
 
@@ -446,7 +411,7 @@ Behavior:
 
 #### `lappy.py merge run`
 
-Merges one `running_splits_YYYYMMDD.csv` file into `all_splits.csv`.
+Merges one `main_splits_YYYYMMDD.csv` file into `all_splits.csv`.
 
 Required arguments:
 
@@ -504,7 +469,7 @@ Default output name:
 
 #### `lappy.py merge runs-batch`
 
-Batch-merges all `running_splits_YYYYMMDD.csv` files into `all_splits.csv`.
+Batch-merges all `main_splits_YYYYMMDD.csv` files into `all_splits.csv`.
 
 Required arguments:
 
@@ -677,6 +642,7 @@ The test suite must cover at least:
 - successful `ingest runs-batch`
 - successful `ingest strides-batch`
 - removal of summary rows
+- removal of rolled-up lap rows (lap field not a single integer; e.g. coach-plan `2 - 4` style)
 - removal of warm-up laps
 - removal of cool-down and everything after it
 - removal of recovery laps for strides

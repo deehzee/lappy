@@ -5,7 +5,9 @@ replace the spec; when they disagree, follow `specs_v1.md`.
 
 ## Phase 0 — Project skeleton
 
-- Repository layout: `src/lappy/` modules, `tests/`, and `data/` as in the spec.
+- Repository layout: `src/lappy/` modules and `tests/` as in
+  [`instructions_v1.md`](instructions_v1.md); `data/[goal]/…` as in **Data directory layout** in
+  [`specs_v1.md`](specs_v1.md).
 - Packaging, dependencies, and a runnable CLI entry (`lappy.py` or equivalent).
 - CLI structure with the full command tree and help at every level required by the spec; stub
   handlers are acceptable until later phases if commands fail clearly.
@@ -30,7 +32,7 @@ ingest or merge logic.
 
 ## Phase 2 — Single-file ingest
 
-- `ingest.py`: Garmin activity CSV to `running_splits_YYYYMMDD.csv` and `strides_YYYYMMDD.csv`.
+- `ingest.py`: Garmin activity CSV to `main_splits_YYYYMMDD.csv` and `strides_YYYYMMDD.csv`.
 - Lap handling: remove warm-up and cool-down (and after), strides recovery removal, strides-only
   laps, sequential lap renumbering, `run_date`, `workout_id`, `workout_type` (runs), `notes`;
   `interval` normalized to `intervals` on output.
